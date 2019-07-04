@@ -16,7 +16,7 @@
 
 ## 模型结构细节
 
-![Structure](data\structure.png)
+![Structure](data/structure.png)
 
 ### a. 预测部分
 
@@ -29,8 +29,10 @@
 ### b.训练部分
 
 1. 采用批量梯度下降法进行优化
-2. 采用交叉熵平均值与正则化损失的和为损失函数
-	$loss = cross\_entropy + regularizaion$ 
+2. 采用交叉熵平均值与正则化损失的和为损失函数  
+
+	<img src="https://latex.codecogs.com/gif.latex?$loss&space;=&space;cross\_entropy&space;&plus;&space;regularizaion$" title="$loss = cross\_entropy + regularizaion$" />
+
 3. 采用指数衰减法调整学习率
 4. 对训练完成的模型进行保存，便于后续评估调用
 
@@ -44,7 +46,7 @@
 
 对于4层神经网络（一层输入，两层隐含，一层输出），取Batch大小为100，训练次数为10k，该模型在测试集上可以达到最高98.34%的正确率。
 
-![result](data\result.png)
+![result](data/result.png)
 
 ### 结果反思
 
