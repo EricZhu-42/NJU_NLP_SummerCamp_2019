@@ -1,0 +1,6 @@
+model_checkpoint_path: "c:\\Users\\zhuxi\\tf\\MNIST_CNN\\path\\to\\model\\model.ckpt-1001"
+all_model_checkpoint_paths: "c:\\Users\\zhuxi\\tf\\MNIST_CNN\\path\\to\\model\\model.ckpt-601"
+all_model_checkpoint_paths: "c:\\Users\\zhuxi\\tf\\MNIST_CNN\\path\\to\\model\\model.ckpt-701"
+all_model_checkpoint_paths: "c:\\Users\\zhuxi\\tf\\MNIST_CNN\\path\\to\\model\\model.ckpt-801"
+all_model_checkpoint_paths: "c:\\Users\\zhuxi\\tf\\MNIST_CNN\\path\\to\\model\\model.ckpt-901"
+all_model_checkpoint_paths: "c:\\Users\\zhuxi\\tf\\MNIST_CNN\\path\\to\\model\\model.ckpt-1001"
