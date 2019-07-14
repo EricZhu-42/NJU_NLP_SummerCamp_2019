@@ -1,7 +1,7 @@
 # 基于BiLSTM+CRF的中文NER任务
 
 > 时间：2019-07-11  
-> 以下部分代码参考了[这篇文章](https://www.jianshu.com/p/6668b965583e)
+> 以下部分代码参考了[这篇文章](https://www.jianshu.com/p/6668b965583e)  
 > [此处](https://github.com/EricZhu-42/NJU_NLP_SummerCamp_2019/tree/master/Week_2/7.8-7.14_NER)为本文GitHub代码库链接
 
 ## 文件结构

@@ -19,11 +19,11 @@
 
 > 使用的测试环境如下：
 >
-> Python == 3.6
-> tensorflow == 1.14.0 (GPU  version)
-> gym ==  0.10.5 (注意最新版本gym可能无法正常运行)
-> opencv-python == 4.1.0.25
-> numpy == 1.16.4
+> Python == 3.6  
+> tensorflow == 1.14.0 (GPU  version)  
+> gym ==  0.10.5 (注意最新版本gym可能无法正常运行)  
+> opencv-python == 4.1.0.25  
+> numpy == 1.16.4  
 >
 > 训练机配置如下：
 >
@@ -61,7 +61,7 @@
 
 > Reward-episode图像
 
-![pic1](img\1.png)
+![pic1](img/1.png)
 
 在3500个episode的训练后，模型的平均reward（游戏分数）由150提升到600+
 
@@ -69,13 +69,13 @@
 
 > Reward-episode图像
 
-![PIC2](img\3.png)
+![PIC2](img/3.png)
 
 在3500个episode的训练后，模型的平均reward由150提升到500+
 
 ### 模型对比
 
-![3](img\4.png)
+![3](img/4.png)
 
 可以看到，两个模型的表现并没有显著的不同。一定程度上可能是由于Dueling DQN模型需要训练的参数个数多余DQN模型，导致训练的难度加大。
 
