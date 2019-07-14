@@ -1,0 +1,2 @@
+model_checkpoint_path: "C:\\Users\\Administrator\\Desktop\\hw3\\experiments\\SpaceInvadersNoFrameskip-v4\\checkpoints\\model"
+all_model_checkpoint_paths: "C:\\Users\\Administrator\\Desktop\\hw3\\experiments\\SpaceInvadersNoFrameskip-v4\\checkpoints\\model"
