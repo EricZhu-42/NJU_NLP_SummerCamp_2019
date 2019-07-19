@@ -17,11 +17,13 @@ class NoopResetEnv(gym.Wrapper):
 
     def _reset(self):
         """ Do no-op action for a number of steps in [1, noop_max]."""
-        self.env.reset()
+        return self.env.reset()
+        """
         noops = np.random.randint(1, self.noop_max + 1)
         for _ in range(noops):
             obs, _, _, _ = self.env.step(0)
         return obs
+        """
 
 class FireResetEnv(gym.Wrapper):
     def __init__(self, env=None):
@@ -129,7 +131,7 @@ class ClippedRewardsWrapper(gym.Wrapper):
         return obs, np.sign(reward), done, info
 
 def wrap_deepmind(env):
-    assert 'NoFrameskip' in env.spec.id
+    #assert 'NoFrameskip' in env.spec.id
     env = EpisodicLifeEnv(env)
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)

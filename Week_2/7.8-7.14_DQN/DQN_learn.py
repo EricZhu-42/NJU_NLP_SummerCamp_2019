@@ -96,7 +96,6 @@ def learn(env,
         os.makedirs(checkpoint_dir)
     if not os.path.exists(monitor_path):
         os.makedirs(monitor_path)
-    
 
     ###############
     # BUILD MODEL #
@@ -147,7 +146,7 @@ def learn(env,
     # q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func')
     # Older versions of TensorFlow may require using "VARIABLES" instead of "GLOBAL_VARIABLES"
     ######
-    
+
     # YOUR CODE HERE
     q = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
     target_q = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
@@ -188,7 +187,7 @@ def learn(env,
     LOG_EVERY_N_STEPS = 10000
 
     loaded = False
-    saver = tf.train.Saver()  
+    saver = tf.train.Saver()
     latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir)
 
     for t in itertools.count():
@@ -238,13 +237,14 @@ def learn(env,
             # chose action according to current Q and exploration
             action_values = session.run(q, feed_dict={obs_t_ph: [q_input]})[0]
             action = np.argmax(action_values)
-
         # perform action in env
-        new_state, reward, done, info = env.step(action)
-
-        # store the transition
-        replay_buffer.store_effect(idx, action, reward, done)
-        last_obs = new_state
+        try:
+            new_state, reward, done, info = env.step(action)
+        except:
+            last_obs = env.reset()
+        else:
+            replay_buffer.store_effect(idx, action, reward, done)
+            last_obs = new_state
 
         if done:
             last_obs = env.reset()
@@ -296,7 +296,7 @@ def learn(env,
             # you should update every target_update_freq steps, and you may find the
             # variable num_param_updates useful for this (it was initialized to 0)
             #####
-            
+
             # YOUR CODE HERE
             s_batch, a_batch, r_batch, sp_batch, done_mask_batch = replay_buffer.sample(batch_size)
 
@@ -308,11 +308,11 @@ def learn(env,
                                                     {obs_t_ph: s_batch, obs_tp1_ph: sp_batch, })
                 model_initialized = True
 
-            if not loaded and latest_checkpoint:        
+            if not loaded and latest_checkpoint:
                     print("Loading model checkpoint {}...\n".format(latest_checkpoint))
                     saver.restore(session, latest_checkpoint)
                     loaded = True
-                
+
             feed_dict = {obs_t_ph:  s_batch,
                          act_t_ph: a_batch,
                          rew_t_ph: r_batch,
@@ -348,9 +348,6 @@ def learn(env,
             logz.log_tabular('exploration', exploration.value(t))
             logz.log_tabular('learning_rate', optimizer_spec.lr_schedule.value(t))
             logz.dump_tabular()
-            if exploration.value(t)!=1.0:
-                saver.save(session, checkpoint_path)
-                print('Model Saved')
-                with open(r'.\reward_list.pkl','wb') as file:
-                    pickle.dump(reward_list, file)
+            saver.save(session, checkpoint_path)
+            print('Model Saved')
             sys.stdout.flush()

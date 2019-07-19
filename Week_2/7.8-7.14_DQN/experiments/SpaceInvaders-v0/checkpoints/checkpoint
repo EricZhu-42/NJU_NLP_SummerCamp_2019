@@ -1,0 +1,2 @@
+model_checkpoint_path: "C:\\Users\\Administrator\\Desktop\\MASTER\\experiments\\SpaceInvaders-v0\\checkpoints\\model"
+all_model_checkpoint_paths: "C:\\Users\\Administrator\\Desktop\\MASTER\\experiments\\SpaceInvaders-v0\\checkpoints\\model"

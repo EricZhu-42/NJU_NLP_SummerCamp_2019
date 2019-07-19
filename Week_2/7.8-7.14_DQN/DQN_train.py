@@ -28,7 +28,7 @@ def atari_model(img_in, num_actions, scope, reuse=False):
         with tf.variable_scope("Value"):
             fc1 = layers.fully_connected(out,   num_outputs=512,  activation_fn=tf.nn.relu)
             Value = layers.fully_connected(fc1, num_outputs=1,    activation_fn=None)
-        
+
         with tf.variable_scope('Advantage'):
             fc2 = layers.fully_connected(out,       num_outputs=512,         activation_fn=tf.nn.relu)
             Advantage = layers.fully_connected(fc2, num_outputs=num_actions, activation_fn=None)
@@ -128,7 +128,7 @@ def main():
 
     # Run training
     seed = 0 # Use a seed of zero (you may want to randomize the seed!)
-    env = get_env('SpaceInvadersNoFrameskip-v4', seed)
+    env = get_env('SpaceInvaders-v0', seed)
     session = get_session()
     atari_learn(env, session, num_timesteps=40000000)
 
