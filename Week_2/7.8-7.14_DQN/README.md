@@ -103,17 +103,19 @@
 
 #### DeepMind 原始模型
 
-![pic1](img\1.png) 如图可见，在3500个Episode的训练后，模型的Mean Reward由150提升到超过600.
+![pic1](img/1.png) 
+
+如图可见，在3500个Episode的训练后，模型的Mean Reward由150提升到超过600.
 
 #### Dueling DQN 模型
 
-![pic2](img\3.png)
+![pic2](img/3.png)
 
 如图可见，在3500个Episode的训练后，模型的Mean Reward由150提升到超过500.
 
 #### 模型对比
 
-![pic3](img\4.png)
+![pic3](img/4.png)
 
 可以看到，两个模型的表现并无显著不同。一定程度上是由于Dueling DQN模型需要训练的参数个数更多，因而训练的难度更大。 
 
