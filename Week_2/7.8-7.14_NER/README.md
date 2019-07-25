@@ -18,16 +18,16 @@
 ## 测试环境
 >使用的测试环境如下：
 >
->Tensorflow-gpu = 1.14.0  
->Keras = 2.2.4  
+>Tensorflow-gpu == 1.14.0  
+>Keras == 2.2.4  
 >Numpy = 1.16.4    
 >
 >训练机配置如下：
 >
 >CPU : I7-8700 (6C12T)   
 >​GPU: RTX2060 (6G)    
->​CUDA = v10.0   
->​cuDNN = v7.3.1  
+>​CUDA == v10.0   
+>​cuDNN == v7.3.1  
 
 ## 处理流程
 
