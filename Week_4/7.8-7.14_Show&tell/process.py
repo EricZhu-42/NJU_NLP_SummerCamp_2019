@@ -1,8 +1,8 @@
-import nltk
-import pickle
 import argparse
-
+import pickle
 from collections import Counter
+
+import nltk
 from pycocotools.coco import COCO
 from tqdm import tqdm
 

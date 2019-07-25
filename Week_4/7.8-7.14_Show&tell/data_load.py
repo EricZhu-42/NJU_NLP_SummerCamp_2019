@@ -1,15 +1,14 @@
-import torch
 import os
-import nltk
-
-import torch.utils.data as data
-
-from PIL import Image
-from pycocotools.coco import COCO
-
 import pickle
+
+import torch
+import torch.utils.data as data
 import torchvision.transforms as transforms
+from PIL import Image
+
+import nltk
 from pretreat import Vocabulary
+from pycocotools.coco import COCO
 
 
 class CocoTrainset(data.Dataset):
