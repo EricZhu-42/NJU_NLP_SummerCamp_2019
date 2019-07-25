@@ -14,7 +14,6 @@ from torchvision import datasets, models, transforms
 import utils
 from data_load import train_load, val_load
 from models import CNN, RNN
-from vocab import Vocabulary, load_vocab
 
 
 def main(args):
@@ -31,25 +30,25 @@ def main(args):
         ])
 
     # load COCOs dataset
-    IMAGES_PATH = 'data/train2014'
-    CAPTION_FILE_PATH = 'data/annotations/captions_train2014.json'
+    TRAIN_IMAGES_PATH = 'data/train2014'
+    TRAIN_CAPTION_FILE_PATH = 'data/annotations/captions_train2014.json'
     VOCAB_PATH = 'data/coco/annotations/vocab.pkl'
 
     with open(VOCAB_PATH,'rb') as f:
         vocab = pickle.load(f)
 
-    train_loader = train_load(root=IMAGES_PATH,
-                                        json=CAPTION_FILE_PATH,
+    train_loader = train_load(root=TRAIN_IMAGES_PATH,
+                                        json=TRAIN_CAPTION_FILE_PATH,
                                         vocab=vocab,
                                         transform=transform,
                                         batch_size=batch_size,
                                         shuffle=True,
                                         num_workers=num_workers)
 
-    IMAGES_PATH = 'data/val2014'
-    CAPTION_FILE_PATH = 'data/annotations/captions_val2014.json'
-    val_loader = val_load(path=IMAGES_PATH,
-                                      json=CAPTION_FILE_PATH,
+    VAL_IMAGES_PATH = 'data/val2014'
+    VAL_CAPTION_FILE_PATH = 'data/annotations/captions_val2014.json'
+    val_loader = val_load(path=VAL_IMAGES_PATH,
+                                      json=VAL_CAPTION_FILE_PATH,
                                       vocab=vocab,
                                       transform=transform,
                                       batch_size=batch_size,

@@ -21,11 +21,11 @@ class Vocabulary(object):
 			self.idx += 1
 
 	def __call__(self, word):
-
 		# If a word not in vocabulary,it will be replace by <unknown>
 		if not word in self.word2idx:
 			return self.word2idx['<unk>']
-		return self.word2idx[word]
+		else:
+      		return self.word2idx[word]
 
 	def __len__(self):
 		return len(self.word2idx)
@@ -36,7 +36,7 @@ def build_vocab(json, threshold):
 	Bulid a vocabulary
 
 	:param json: json of caption
-	:param threshold: Only when frequency of a word is greater than threshold does it can be added in vocabulary
+	:param threshold: Only when frequency of a word is greater than threshold does it can be added in vocabulary.
 	:return: a vocabulary( pkl format )
 	'''
 

@@ -20,7 +20,6 @@ class CocoTrainset(data.Dataset):
 		:param json: Captions path
 		:param vocab: Vocabulary
 		:param transform: Process images
-		:return:
 		'''
 
 		self.root = root
@@ -80,7 +79,7 @@ def train_collate_fn(data):
 
 	for i, cap in enumerate(captions):
 		end = lengths[i]
-		targets[i, :end] = cap[:end]
+		targets[i, :end] = cap[:end] # Transfer the valid part
 
 	return images, targets, lengths, list(img_ids)
 
