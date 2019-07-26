@@ -1,187 +1,309 @@
-from __future__ import print_function
-
+import argparse
+import torch
 import os
 import pickle
+import random
+import nltk
+import json
 
-import torch
 import torch.nn as nn
-import torch.optim as optim
-from torch import np
-from torch.autograd import Variable
+import numpy as np
+import torchvision.transforms as transforms
+
+from tqdm import tqdm
 from torch.nn.utils.rnn import pack_padded_sequence
-from torchvision import datasets, models, transforms
 
-import utils
-from data_load import train_load, val_load
-from models import CNN, RNN
+from model import *
+from utils.general_tools import *
+from utils.save_tools import *
+from data_load import *
+from pretreat import *
 
+def set_seed(seed):
+	'''
+	Fix immediate seed to repeat experiment
+	:param seed: An integer
+	:return:
+	'''
+	torch.manual_seed(seed)
+	torch.cuda.manual_seed_all(seed)
+	np.random.seed(seed)
+	random.seed(seed)
+	torch.backends.cudnn.deterministic = True
+
+set_seed(21)
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 def main(args):
-    # hyperparameters
-    batch_size = args.batch_size
-    num_workers = 1
 
-    # Image Preprocessing
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-        ])
+	# ==============================
+	# Create some folders or files for saving
+	# ==============================
 
-    # load COCOs dataset
-    TRAIN_IMAGES_PATH = 'data/train2014'
-    TRAIN_CAPTION_FILE_PATH = 'data/annotations/captions_train2014.json'
-    VOCAB_PATH = 'data/coco/annotations/vocab.pkl'
+	if not os.path.exists(args.root_folder.format(args.save_version)):
+		os.mkdir(args.root_folder.format(args.save_version))
 
-    with open(VOCAB_PATH,'rb') as f:
-        vocab = pickle.load(f)
+	loss_path = args.loss_path.format(args.save_version)
+	mertics_path = args.mertics_path.format(args.save_version)
+	epoch_model_path = args.epoch_model_path.format(args.save_version)
+	best_model_path = args.best_model_path.format(args.save_version)
+	generated_captions_path = args.generated_captions_folder_path.format(args.save_version)
+	sentences_show_path = args.sentences_show_path.format(args.save_version)
 
-    train_loader = train_load(root=TRAIN_IMAGES_PATH,
-                                        json=TRAIN_CAPTION_FILE_PATH,
-                                        vocab=vocab,
-                                        transform=transform,
-                                        batch_size=batch_size,
-                                        shuffle=True,
-                                        num_workers=num_workers)
+	# Transform the format of images
+	# This function in utils.general_tools.py
+	train_transform = get_train_transform()
+	val_transform = get_val_trainsform()
 
-    VAL_IMAGES_PATH = 'data/val2014'
-    VAL_CAPTION_FILE_PATH = 'data/annotations/captions_val2014.json'
-    val_loader = val_load(path=VAL_IMAGES_PATH,
-                                      json=VAL_CAPTION_FILE_PATH,
-                                      vocab=vocab,
-                                      transform=transform,
-                                      batch_size=batch_size,
-                                      shuffle=True,
-                                      num_workers=num_workers)
+	# Load vocabulary
+	print("*** Load Vocabulary ***")
+	with open(args.vocab_path, 'rb') as f:
+		vocab = pickle.load(f)
+
+	# Create data sets
+	# This function in data_load.py
+	train_data = train_load(root=args.train_image_dir, json=args.train_caption_path, vocab=vocab,
+						   transform=train_transform,
+						   batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+
+	val_data = val_load(root=args.val_image_dir, json=args.val_caption_path,
+						 transform=val_transform,
+						 batch_size=1, shuffle=False, num_workers=args.num_workers)
+
+	# Build model
+	encoder = Encoder(args.hidden_dim,args.fine_tuning).to(device)
+	decoder = Decoder(args.embedding_dim, args.hidden_dim, vocab, len(vocab), args.max_seq_length).to(device)
+
+	# Select loss function
+	criterion = nn.CrossEntropyLoss().to(device)
+
+	if args.fine_tuning == True:
+		params = list(decoder.parameters()) + list(encoder.parameters())
+		optimizer = torch.optim.Adam(params,lr=args.fine_tuning_lr)
+	else:
+		params = decoder.parameters()
+		optimizer = torch.optim.Adam(params, lr=args.lr)
+
+	# Load pretrained model
+	if args.resume == True:
+		checkpoint = torch.load(best_model_path)
+		encoder.load_state_dict(checkpoint['encoder'])
+		decoder.load_state_dict(checkpoint['decoder'])
+		if args.fine_tuning == False:
+			optimizer.load_state_dict(checkpoint['optimizer'])
+		start_epoch = checkpoint['epoch'] + 1
+		best_score = checkpoint['best_score']
+		best_epoch = checkpoint['best_epoch']
+
+	# New epoch and score
+	else:
+		start_epoch = 1
+		best_score = 0
+		best_epoch = 0
+
+	for epoch in range(start_epoch, 10000):
+
+		print("-" * 20)
+		print("epoch:{}".format(epoch))
+
+		# Adjust learning rate when the difference between epoch and best epoch is multiple of 3
+		if (epoch - best_epoch) > 0 and (epoch - best_epoch) % 4 == 0:
+			# This function in utils.general_tools.py
+			adjust_lr(optimizer, args.shrink_factor)
+		if (epoch - best_epoch) > 10 :
+			break
+			print("*** Training complete ***")
+
+		# =============
+		# Training
+		# =============
+
+		print(" *** Training ***")
+		decoder.train()
+		encoder.train()
+		total_step = len(train_data)
+		epoch_loss = 0
+		for (images, captions, lengths, img_ids) in tqdm(train_data):
+			images = images.to(device)
+			captions = captions.to(device)
+			# Why do lengths cut 1 and the first dimension of captions from 1
+			# Because we need to ignore the begining symbol <start>
+			lengths = list(np.array(lengths) - 1)
+
+			targets = pack_padded_sequence(captions[:, 1:], lengths, batch_first=True)[0]
+			features = encoder(images)
+			predictions = decoder(features, captions, lengths)
+			predictions = pack_padded_sequence(predictions, lengths, batch_first=True)[0]
+
+			loss = criterion(predictions, targets)
+			epoch_loss += loss.item()
+			decoder.zero_grad()
+			encoder.zero_grad()
+			loss.backward()
+			optimizer.step()
 
 
-    losses_val = []
-    losses_train = []
+		# Save loss information
+		# This function in utils.save_tools.py
+		save_loss(round(epoch_loss / total_step, 3), epoch, loss_path)
 
-    # Build the models
-    ngpu = 1
-    initial_step = initial_epoch = 0
-    embed_size = args.embed_size
-    num_hiddens = args.num_hidden
-    learning_rate = 1e-3
-    num_epochs = 3
-    log_step = args.log_step
-    save_step = 500
-    checkpoint_dir = args.checkpoint_dir
 
-    encoder = CNN(embed_size)
-    decoder = RNN(embed_size, num_hiddens, len(vocab), 1, rec_unit=args.rec_unit)
+		# =============
+		# Evaluating
+		# =============
 
-    # Loss
-    criterion = nn.CrossEntropyLoss()
+		print("*** Evaluating ***")
+		encoder.eval()
+		decoder.eval()
+		generated_captions = []
+		for image, img_id in tqdm(val_data):
 
-    if args.checkpoint_file:
-        encoder_state_dict, decoder_state_dict, optimizer, *meta = utils.load_models(args.checkpoint_file,args.sample)
-        initial_step, initial_epoch, losses_train, losses_val = meta
-        encoder.load_state_dict(encoder_state_dict)
-        decoder.load_state_dict(decoder_state_dict)
-    else:
-        params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.batchnorm.parameters())
-        optimizer = torch.optim.Adam(params, lr=learning_rate)
+			image = image.to(device)
+			img_id = img_id[0]
 
-    if torch.cuda.is_available():
-        encoder.cuda()
-        decoder.cuda()
+			features = encoder(image)
+			sentence = decoder.generate(features)
+			sentence = ' '.join(sentence)
+			item = {'image_id': int(img_id), 'caption': sentence}
+			generated_captions.append(item)
+			j = random.randint(1,100)
 
-    if args.sample:
-        return utils.sample(encoder, decoder, vocab, val_loader)
 
-    # Train the Models
-    total_step = len(train_loader)
-    try:
-        for epoch in range(initial_epoch, num_epochs):
+		print('*** Computing metrics ***')
 
-            for step, (images, captions, lengths) in enumerate(train_loader, start=initial_step):
+		# Save current generated captions
+		# This function in utils.save_tools.py
 
-                # Set mini-batch dataset
-                images = utils.to_var(images, volatile=True)
-                captions = utils.to_var(captions)
-                targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
+		captions_json_path = save_generated_captions(generated_captions, epoch, generated_captions_path,args.fine_tuning)
 
-                # Forward, Backward and Optimize
-                decoder.zero_grad()
-                encoder.zero_grad()
+		# Compute score of metrics
+		# This function in utils.general_tools.py
+		results = coco_metrics(args.val_caption_path, captions_json_path, epoch, sentences_show_path)
 
-                if ngpu > 1:
-                    # run on multiple GPU
-                    features = nn.parallel.data_parallel(encoder, images, range(ngpu))
-                    outputs = nn.parallel.data_parallel(decoder, features, range(ngpu))
-                else:
-                    # run on single GPU
-                    features = encoder(images)
-                    outputs = decoder(features, captions, lengths)
+		# Save metrics results
+		# This function in utils.save_tools.py
+		epoch_score = save_metrics(results, epoch, mertics_path)
 
-                train_loss = criterion(outputs, targets)
-                losses_train.append(train_loss.data[0])
-                train_loss.backward()
-                optimizer.step()
+		# Update the best score
+		if best_score < epoch_score:
 
-                # Run validation set and predict
-                if step % log_step == 0:
-                    encoder.batchnorm.eval()
-                    # run validation set
-                    batch_loss_val = []
-                    for val_step, (images, captions, lengths) in enumerate(val_loader):
-                        images = utils.to_var(images, volatile=True)
-                        captions = utils.to_var(captions, volatile=True)
+			best_score = epoch_score
+			best_epoch = epoch
 
-                        targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
-                        features = encoder(images)
-                        outputs = decoder(features, captions, lengths)
-                        val_loss = criterion(outputs, targets)
-                        batch_loss_val.append(val_loss.data[0])
+			save_best_model(encoder, decoder, optimizer, epoch, best_score, best_epoch, best_model_path)
 
-                    losses_val.append(np.mean(batch_loss_val))
+		print("*** Best score:{} Best epoch:{} ***".format(best_score, best_epoch))
+		# Save every epoch model
+		save_epoch_model(encoder, decoder, optimizer, epoch, best_score, best_epoch, epoch_model_path,args.fine_tuning)
 
-                    # predict
-                    sampled_ids = decoder.sample(features)
-                    sampled_ids = sampled_ids.cpu().data.numpy()[0]
-                    sentence = utils.convert_back_to_text(sampled_ids, vocab)
-                    print('Sample:', sentence)
-
-                    true_ids = captions.cpu().data.numpy()[0]
-                    sentence = utils.convert_back_to_text(true_ids, vocab)
-                    print('Target:', sentence)
-
-                    print('Epoch: {} - Step: {} - Train Loss: {} - Eval Loss: {}'.format(epoch, step, losses_train[-1], losses_val[-1]))
-                    encoder.batchnorm.train()
-
-                # Save the models
-                if (step+1) % save_step == 0:
-                    utils.save_models(encoder, decoder, optimizer, step, epoch, losses_train, losses_val, checkpoint_dir)
-                    utils.dump_losses(losses_train, losses_val, os.path.join(checkpoint_dir, 'losses.pkl'))
-
-    except KeyboardInterrupt:
-        pass
-    finally:
-        # Do final save
-        utils.save_models(encoder, decoder, optimizer, step, epoch, losses_train, losses_val, checkpoint_dir)
-        utils.dump_losses(losses_train, losses_val, os.path.join(checkpoint_dir, 'losses.pkl'))
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint_file', type=str,
-            default=None, help='path to saved checkpoint')
-    parser.add_argument('--checkpoint_dir', type=str,
-            default='checkpoints', help='directory to save checkpoints')
-    parser.add_argument('--batch_size', type=int,
-            default=128, help='size of batches')
-    parser.add_argument('--rec_unit', type=str,
-            default='gru', help='choose "gru", "lstm" or "elman"')
-    parser.add_argument('--sample', default=False,
-            action='store_true', help='just show result, requires --checkpoint_file')
-    parser.add_argument('--log_step', type=int,
-            default=125, help='number of steps in between calculating loss')
-    parser.add_argument('--num_hidden', type=int,
-            default=512, help='number of hidden units in the RNN')
-    parser.add_argument('--embed_size', type=int,
-            default=512, help='number of embeddings in the RNN')
-    args = parser.parse_args()
-    main(args)
+	parser = argparse.ArgumentParser()
+
+	# =================
+	# Load parameter
+	# =================
+	parser.add_argument('--vocab_path', type=str,
+						default='/home/maz/Documents/data/coco/annotations/vocab.pkl',
+						help="Storage path of vocabulary")
+
+	parser.add_argument('--train_image_dir', type=str,
+						default='/home/maz/Documents/data/coco/coco_image2014',
+						help="Image path of training data set")
+
+	parser.add_argument('--train_caption_path', type=str,
+						default='/home/maz/Documents/data/coco/annotations/captions_train2014.json',
+						help="Caption path of training data set")
+
+	parser.add_argument('--val_image_dir', type=str,
+						default='/home/maz/Documents/data/coco/val2014',
+						help="Image path of validation set")
+
+	parser.add_argument('--val_caption_path', type=str,
+						default='/home/maz/Documents/data/coco/annotations/captions_val2014.json',
+						help="Caption path of validation set")
+
+	parser.add_argument('--fine_tuning', type=bool,
+						default=False,
+						help="fine tuning model")
+
+	parser.add_argument('--resume', type=bool,
+						default=False,
+						help="Continue a pretrained model")
+
+	# ================
+	# Save parameter
+	# ================
+
+	parser.add_argument('--root_folder', type=str,
+						default='../../log/caption/nic/{}/',
+						help="Root directory of log information")
+
+	parser.add_argument('--save_version', type=str,
+						default='res152',
+						help="Distinguish different saved information ")
+
+	parser.add_argument('--loss_path', type=str,
+						default='../../log/caption/nic/{}/loss.csv',
+						help="Path to save loss information file")
+
+	parser.add_argument('--mertics_path', type=str,
+						default='../../log/caption/nic/{}/metrics_result.csv',
+						help="Path to save metrics result file")
+
+	parser.add_argument('--epoch_model_path', type=str,
+						default='../../log/caption/nic/{}/epoch_model/',
+						help="Folder Path to save every epoch model weights file")
+
+	parser.add_argument('--best_model_path', type=str,
+						default='../../log/caption/nic/{}/best_model.tar',
+						help="Path to save best model weights file")
+
+	parser.add_argument('--generated_captions_folder_path', type=str,
+						default='../../log/caption/nic/{}/generated_captions/',
+						help="Folder Path to save every epoch generated_captions")
+
+	parser.add_argument('--sentences_show_path', type=str,
+						default='../../log/caption/nic/{}/sentences_show/',
+						help="To show generated sentence of every image in every epoch, including all metrics")
+
+	# =================
+	# model parameter #
+	# =================
+
+	parser.add_argument('--batch_size', type=int,
+						default=64,
+						help="Size of a mini-batch")
+
+	parser.add_argument('--num_workers', type=str,
+						default=1,
+						help="Number of threads reading data")
+
+	parser.add_argument('--embedding_dim', type=int,
+						default=512,
+						help="Dimention of word embedding")
+
+	parser.add_argument('--hidden_dim', type=int,
+						default=512,
+						help=" Number of hidden layer cells in LSTM")
+
+	parser.add_argument('--max_seq_length', type=int,
+						default=20,
+						help='Maximum length of prediction sequence')
+
+	parser.add_argument('--lr', type=float,
+						default=4e-4,
+						help='Learning rate')
+
+	parser.add_argument('--fine_tuning_lr', type=float,
+						default=1e-4,
+						help='Learning rate of fine tuning')
+
+	parser.add_argument('--shrink_factor', type=float,
+						default=0.8,
+						help='Decay factor of learning rate')
+
+	args = parser.parse_args()
+	main(args)

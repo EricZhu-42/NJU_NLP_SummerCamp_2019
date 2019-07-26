@@ -1,108 +1,132 @@
 import torch
-from torch import nn
-from torch.autograd import Variable
-from torch.nn import Sequential
-from torch.nn.utils.rnn import pack_padded_sequence
-from torchvision import models
+import torch.nn as nn
+import torchvision.models as models
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-class CNN(nn.Module):
-    """Class to build new model including all but last layers"""
-    def __init__(self, output_dim=1000):
-        super(CNN, self).__init__()
-        pretrained_model = models.resnet152(pretrained=True)
-        self.resnet = Sequential(*list(pretrained_model.children())[:-1]) # Get all layers but the last
-        self.linear = nn.Linear(pretrained_model.fc.in_features, output_dim) # Create a new last fc layer
-        self.batchnorm = nn.BatchNorm1d(output_dim, momentum=0.01)
-        self.init_weights()
+# import pickle
 
-    def init_weights(self):
-        # weight init, inspired by tutorial
-        self.linear.weight.data.normal_(0,0.02)
-        self.linear.bias.data.fill_(0)
+# class Vocabulary(object):
+#
+#     def __init__(self):
+#         self.word2idx = {}
+#         self.idx2word = {}
+#         self.idx = 0
+#
+#     def add_word(self,word):
+#         if not word in self.word2idx:
+#             self.word2idx[word] = self.idx
+#             self.idx2word[self.idx] = word
+#             self.idx+=1
+#
+#     def __call__(self,word):
+#
+#         # If a word not in vocabulary,it will be replace by <unknown>
+#         if not word in self.word2idx:
+#             return self.word2idx['<unk>']
+#         return self.word2idx[word]
+#
+#     def __len__(self):
+#         return len(self.word2idx)
 
-    def forward(self, x):
-        x = self.resnet(x)
-        x = Variable(x.data)
-        x = x.view(x.size(0), -1) # flatten
-        x = self.linear(x)
+class Encoder(nn.Module):
 
-        return x
+	def __init__(self,hidden_dim,fine_tuning):
+		super(Encoder, self).__init__()
+
+		cnn = models.resnet152(pretrained=True)
+		modules = list(cnn.children())[:-2]
+		self.cnn = nn.Sequential(*modules)
+		self.affine_1 = nn.Linear(512, hidden_dim)
+		for p in self.cnn.parameters():
+			p.requires_grad = False
+		if fine_tuning == True:
+			self.fine_tune(fine_tuning=fine_tuning)
+
+	def forward(self, images):
+
+		features = self.cnn(images)
+		features = features.permute(0, 2, 3, 1)
+		features = features.reshape(features.size(0), -1,512)
+		features = self.affine_1(features)
+		return features
+
+	def fine_tune(self, fine_tuning=False):
+		for c in list(self.cnn.children())[7:]:
+			for p in c.parameters():
+				p.requires_grad = fine_tuning
+
+class Decoder(nn.Module):
+	def __init__(self, embedding_dim, hidden_dim, vocab, vocab_size, max_seq_length):
+
+		super(Decoder, self).__init__()
+		self.vocab_size = vocab_size
+		self.vocab = vocab
+		self.embedding = nn.Embedding(vocab_size, embedding_dim)
+		self.lstmcell = nn.LSTMCell(embedding_dim, hidden_dim)
+		self.fc = nn.Linear(hidden_dim, vocab_size)
+		self.max_seq_length = max_seq_length
+		self.init_h = nn.Linear(512, hidden_dim)
+		self.init_c = nn.Linear(512, hidden_dim)
+
+	def forward(self, features, captions, lengths, state=None):
+
+		batch_size = features.size(0)
+		vocab_size = self.vocab_size
+		embeddings = self.embedding(captions)
+		predictions = torch.zeros(batch_size, max(lengths), vocab_size).to(device)
+		h, c = self.init_hidden_state(features)
+
+		for t in range(max(lengths)):
+			batch_size_t = sum([l > t for l in lengths])
+			h, c = self.lstmcell(embeddings[:batch_size_t, t, :],
+								 (h[:batch_size_t], c[:batch_size_t]))  # (batch_size_t,hidden_dim)
+			preds = self.fc(h)
+			predictions[:batch_size_t, t, :] = preds
+
+		return predictions
+
+	def generate(self, features, state=None):
+
+		sentence = []
+		h, c = self.init_hidden_state(features)
+		input = self.embedding(torch.tensor([1]).to(device))
+
+		for i in range(self.max_seq_length):
+
+			h, c = self.lstmcell(input, (h, c))
+			prediction = self.fc(h)
+			_, prediction = prediction.max(1)
+			word = self.vocab.idx2word[int(prediction)]
+			if word == '<end>':
+				break
+			sentence.append(word)
+			input = self.embedding(prediction)
+
+		return sentence
 
 
-class RNN(torch.nn.Module):
-    """
-    Recurrent Neural Network for Text Generation.
-    To be used as part of an Encoder-Decoder network for Image Captioning.
-    """
-    __rec_units = {
-        'elman': nn.RNN, 'gru': nn.GRU, 'lstm': nn.LSTM }
-
-    def __init__(self, emb_size, hidden_size, vocab_size, num_layers=1, rec_unit='gru'):
-        """
-        Initializer
-        :param embed_size: size of word embeddings
-        :param hidden_size: size of hidden state of the recurrent unit
-        :param vocab_size: size of the vocabulary (output of the network)
-        :param num_layers: number of recurrent layers (default=1)
-        :param rec_unit: type of recurrent unit (default=gru)
-        """
-        rec_unit = rec_unit.lower()
-        assert rec_unit in RNN.__rec_units, 'Specified recurrent unit is not available'
-
-        super(RNN, self).__init__()
-        self.embeddings = nn.Embedding(vocab_size, emb_size)
-        self.unit = RNN.__rec_units[rec_unit](emb_size, hidden_size, num_layers,
-                                                 batch_first=True)
-        self.linear = nn.Linear(hidden_size, vocab_size)
-
-    def forward(self, features, captions, lengths):
-        """
-        Forward pass through the network
-        :param features: features from CNN feature extractor
-        :param captions: encoded and padded (target) image captions
-        :param lengths: actual lengths of image captions
-        :returns: predicted distributions over the vocabulary
-        """
-        # embed tokens in vector space
-        embeddings = self.embeddings(captions)
-
-        # append image as first input
-        inputs = torch.cat((features.unsqueeze(1), embeddings), 1)
-
-        # pack data (prepare it for pytorch model)
-        inputs_packed = pack_padded_sequence(inputs, lengths, batch_first=True)
-
-        # run data through recurrent network
-        hiddens, _ = self.unit(inputs_packed)
-        outputs = self.linear(hiddens[0])
-        return outputs
-
-    def sample(self, features, max_len=25):
-        """
-        Sample from Recurrent network using greedy decoding
-        :param features: features from CNN feature extractor
-        :returns: predicted image captions
-        """
-        # TODO: update to beam search
-
-        output_ids = []
-        states = None
-        inputs = features.unsqueeze(1)
-
-        for i in range(max_len):
-            # pass data through recurrent network
-            hiddens, states = self.unit(inputs, states)
-            outputs = self.linear(hiddens.squeeze(1))
-
-            # find maximal predictions
-            predicted = outputs.max(1)[1]
-
-            # append results from given step to global results
-            output_ids.append(predicted)
-
-            # prepare chosen words for next decoding step
-            inputs = self.embeddings(predicted)
-            inputs = inputs.unsqueeze(1)
-        output_ids = torch.stack(output_ids, 1)
-        return output_ids.squeeze()
+	def init_hidden_state(self, features):
+		mean_features = features.mean(dim=1)
+		h = self.init_h(mean_features)
+		c = self.init_c(mean_features)
+		return h, c
+# if __name__ == '__main__':
+#
+# 	embedding_dim = 512
+# 	hidden_dim = 512
+# 	vocab_path = '/home/maz/文档/data/coco/annotations/vocab.pkl'
+# 	with open(vocab_path, 'rb') as f:v
+# 		vocab = pickle.load(f)
+# 	vocab_size = len(vocab)
+# 	encoder = Encoder(embedding_dim)
+# 	decoder = Decoder(embedding_dim,hidden_dim,vocab,vocab_size)
+#
+# 	samples = torch.Tensor(1,3,224,224)
+# 	captions = torch.tensor([[1,2,3,4,5,6,7],[1,7,6,5,4,3,0]])
+# 	lengths = [7,6]
+# 	features = encoder.forward(samples,False)
+# 	# pred = decoder.forward(features, captions, lengths)
+# 	pred = decoder.generate(features)
+# 	print(pred)

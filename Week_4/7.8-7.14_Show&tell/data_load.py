@@ -7,7 +7,6 @@ import torchvision.transforms as transforms
 from PIL import Image
 
 import nltk
-from pretreat import Vocabulary
 from pycocotools.coco import COCO
 
 
