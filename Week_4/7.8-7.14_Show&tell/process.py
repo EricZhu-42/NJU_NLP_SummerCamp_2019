@@ -25,7 +25,7 @@ class Vocabulary(object):
 		if not word in self.word2idx:
 			return self.word2idx['<unk>']
 		else:
-      		return self.word2idx[word]
+			return self.word2idx[word]
 
 	def __len__(self):
 		return len(self.word2idx)
@@ -80,11 +80,11 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 
 	parser.add_argument('--caption_path', type=str,
-						default=r'data/coco/annotations/captions_train2014.json',
+						default=r'data/captions_train2014.json',
 						help='Annotation path of training set ')
 
 	parser.add_argument('--vocab_path', type=str,
-						default=r'data/coco/annotations/vocab.pkl',
+						default=r'data/vocab.pkl',
 						help='Storage path of vocabulary')
 
 	parser.add_argument('--threshold', type=int,

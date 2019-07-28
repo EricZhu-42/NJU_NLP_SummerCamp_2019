@@ -17,7 +17,7 @@ from model import *
 from utils.general_tools import *
 from utils.save_tools import *
 from data_load import *
-from pretreat import *
+from process import Vocabulary
 
 def set_seed(seed):
 	'''
@@ -42,15 +42,15 @@ def main(args):
 	# Create some folders or files for saving
 	# ==============================
 
-	if not os.path.exists(args.root_folder.format(args.save_version)):
-		os.mkdir(args.root_folder.format(args.save_version))
+	if not os.path.exists(args.root_folder):
+		os.mkdir(args.root_folder)
 
-	loss_path = args.loss_path.format(args.save_version)
-	mertics_path = args.mertics_path.format(args.save_version)
-	epoch_model_path = args.epoch_model_path.format(args.save_version)
-	best_model_path = args.best_model_path.format(args.save_version)
-	generated_captions_path = args.generated_captions_folder_path.format(args.save_version)
-	sentences_show_path = args.sentences_show_path.format(args.save_version)
+	loss_path = args.loss_path
+	mertics_path = args.mertics_path
+	epoch_model_path = args.epoch_model_path
+	best_model_path = args.best_model_path
+	generated_captions_path = args.generated_captions_folder_path
+	sentences_show_path = args.sentences_show_path
 
 	# Transform the format of images
 	# This function in utils.general_tools.py
@@ -125,7 +125,11 @@ def main(args):
 		encoder.train()
 		total_step = len(train_data)
 		epoch_loss = 0
+		ct = 0
 		for (images, captions, lengths, img_ids) in tqdm(train_data):
+			ct += 1
+			if ct==4:
+				break
 			images = images.to(device)
 			captions = captions.to(device)
 			# Why do lengths cut 1 and the first dimension of captions from 1
@@ -159,7 +163,9 @@ def main(args):
 		decoder.eval()
 		generated_captions = []
 		for image, img_id in tqdm(val_data):
-
+			ct += 1
+			if ct==6:
+				break
 			image = image.to(device)
 			img_id = img_id[0]
 
@@ -206,23 +212,23 @@ if __name__ == '__main__':
 	# Load parameter
 	# =================
 	parser.add_argument('--vocab_path', type=str,
-						default='/home/maz/Documents/data/coco/annotations/vocab.pkl',
+						default='./data/vocab.pkl',
 						help="Storage path of vocabulary")
 
 	parser.add_argument('--train_image_dir', type=str,
-						default='/home/maz/Documents/data/coco/coco_image2014',
+						default='./data/train2014/',
 						help="Image path of training data set")
 
 	parser.add_argument('--train_caption_path', type=str,
-						default='/home/maz/Documents/data/coco/annotations/captions_train2014.json',
+						default='./data/captions_train2014.json',
 						help="Caption path of training data set")
 
 	parser.add_argument('--val_image_dir', type=str,
-						default='/home/maz/Documents/data/coco/val2014',
+						default='./data/val2014/',
 						help="Image path of validation set")
 
 	parser.add_argument('--val_caption_path', type=str,
-						default='/home/maz/Documents/data/coco/annotations/captions_val2014.json',
+						default='./data/captions_val2014.json',
 						help="Caption path of validation set")
 
 	parser.add_argument('--fine_tuning', type=bool,
@@ -238,7 +244,7 @@ if __name__ == '__main__':
 	# ================
 
 	parser.add_argument('--root_folder', type=str,
-						default='../../log/caption/nic/{}/',
+						default='./log',
 						help="Root directory of log information")
 
 	parser.add_argument('--save_version', type=str,
@@ -246,27 +252,26 @@ if __name__ == '__main__':
 						help="Distinguish different saved information ")
 
 	parser.add_argument('--loss_path', type=str,
-						default='../../log/caption/nic/{}/loss.csv',
+						default='./log/loss.csv',
 						help="Path to save loss information file")
 
 	parser.add_argument('--mertics_path', type=str,
-						default='../../log/caption/nic/{}/metrics_result.csv',
+						default='./log/metrics_result.csv',
 						help="Path to save metrics result file")
 
 	parser.add_argument('--epoch_model_path', type=str,
-						default='../../log/caption/nic/{}/epoch_model/',
+						default='./log/epoch_model/',
 						help="Folder Path to save every epoch model weights file")
 
 	parser.add_argument('--best_model_path', type=str,
-						default='../../log/caption/nic/{}/best_model.tar',
-						help="Path to save best model weights file")
-
+						default='./log/best_model.tar',
+						help="Path to save b 
 	parser.add_argument('--generated_captions_folder_path', type=str,
-						default='../../log/caption/nic/{}/generated_captions/',
+						default='./log/generated_captions/',
 						help="Folder Path to save every epoch generated_captions")
 
 	parser.add_argument('--sentences_show_path', type=str,
-						default='../../log/caption/nic/{}/sentences_show/',
+						default='./log/sentences_show/',
 						help="To show generated sentence of every image in every epoch, including all metrics")
 
 	# =================
