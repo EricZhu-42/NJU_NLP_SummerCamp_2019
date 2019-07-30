@@ -84,7 +84,7 @@ def main(args):
 		optimizer = torch.optim.Adam(params,lr=args.fine_tuning_lr)
 	else:
 		params = decoder.parameters()
-		optimizer = torch.optim.Adam(params, lr=args.lr)
+		optimizer = torch.optim.Adam(params, lr=args.fine_tuning_lr)
 
 	# Load pretrained model
 	if args.resume == True:
@@ -125,11 +125,7 @@ def main(args):
 		encoder.train()
 		total_step = len(train_data)
 		epoch_loss = 0
-		ct = 0
 		for (images, captions, lengths, img_ids) in tqdm(train_data):
-			ct += 1
-			if ct==4:
-				break
 			images = images.to(device)
 			captions = captions.to(device)
 			# Why do lengths cut 1 and the first dimension of captions from 1
@@ -163,9 +159,7 @@ def main(args):
 		decoder.eval()
 		generated_captions = []
 		for image, img_id in tqdm(val_data):
-			ct += 1
-			if ct==6:
-				break
+
 			image = image.to(device)
 			img_id = img_id[0]
 
@@ -216,19 +210,19 @@ if __name__ == '__main__':
 						help="Storage path of vocabulary")
 
 	parser.add_argument('--train_image_dir', type=str,
-						default='./data/train2014/',
+						default='../cocodata/train2014',
 						help="Image path of training data set")
 
 	parser.add_argument('--train_caption_path', type=str,
-						default='./data/captions_train2014.json',
+						default='../cocodata/annotations/captions_train2014.json',
 						help="Caption path of training data set")
 
 	parser.add_argument('--val_image_dir', type=str,
-						default='./data/val2014/',
+						default='../cocodata/val2014',
 						help="Image path of validation set")
 
 	parser.add_argument('--val_caption_path', type=str,
-						default='./data/captions_val2014.json',
+						default='../cocodata/annotations/captions_val2014.json',
 						help="Caption path of validation set")
 
 	parser.add_argument('--fine_tuning', type=bool,
@@ -260,12 +254,13 @@ if __name__ == '__main__':
 						help="Path to save metrics result file")
 
 	parser.add_argument('--epoch_model_path', type=str,
-						default='./log/epoch_model/',
+						default='./model/epoch_model/',
 						help="Folder Path to save every epoch model weights file")
 
 	parser.add_argument('--best_model_path', type=str,
-						default='./log/best_model.tar',
-						help="Path to save b 
+						default='./model/best_model.tar',
+						help="Path to save best model weights file")
+
 	parser.add_argument('--generated_captions_folder_path', type=str,
 						default='./log/generated_captions/',
 						help="Folder Path to save every epoch generated_captions")

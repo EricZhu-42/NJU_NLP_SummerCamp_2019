@@ -117,7 +117,7 @@ class Decoder(nn.Module):
 # 	embedding_dim = 512
 # 	hidden_dim = 512
 # 	vocab_path = '/home/maz/文档/data/coco/annotations/vocab.pkl'
-# 	with open(vocab_path, 'rb') as f:v
+# 	with open(vocab_path, 'rb') as f:
 # 		vocab = pickle.load(f)
 # 	vocab_size = len(vocab)
 # 	encoder = Encoder(embedding_dim)

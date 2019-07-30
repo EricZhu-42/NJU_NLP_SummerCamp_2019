@@ -1,8 +1,8 @@
-import argparse
-import pickle
-from collections import Counter
-
 import nltk
+import pickle
+import argparse
+
+from collections import Counter
 from pycocotools.coco import COCO
 from tqdm import tqdm
 
@@ -21,11 +21,11 @@ class Vocabulary(object):
 			self.idx += 1
 
 	def __call__(self, word):
+
 		# If a word not in vocabulary,it will be replace by <unknown>
 		if not word in self.word2idx:
 			return self.word2idx['<unk>']
-		else:
-			return self.word2idx[word]
+		return self.word2idx[word]
 
 	def __len__(self):
 		return len(self.word2idx)
@@ -36,7 +36,7 @@ def build_vocab(json, threshold):
 	Bulid a vocabulary
 
 	:param json: json of caption
-	:param threshold: Only when frequency of a word is greater than threshold does it can be added in vocabulary.
+	:param threshold: Only when frequency of a word is greater than threshold does it can be added in vocabulary
 	:return: a vocabulary( pkl format )
 	'''
 
@@ -80,11 +80,11 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 
 	parser.add_argument('--caption_path', type=str,
-						default=r'data/captions_train2014.json',
+						default='../cocodata/annotations/captions_train2014.json',
 						help='Annotation path of training set ')
 
 	parser.add_argument('--vocab_path', type=str,
-						default=r'data/vocab.pkl',
+						default='./data/vocab.pkl',
 						help='Storage path of vocabulary')
 
 	parser.add_argument('--threshold', type=int,
