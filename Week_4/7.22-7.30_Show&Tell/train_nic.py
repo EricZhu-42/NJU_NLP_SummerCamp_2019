@@ -1,38 +1,27 @@
 import argparse
-import torch
+import json
 import os
 import pickle
 import random
+
 import nltk
-import json
-
-import torch.nn as nn
 import numpy as np
+import torch
+import torch.nn as nn
 import torchvision.transforms as transforms
-
-from tqdm import tqdm
 from torch.nn.utils.rnn import pack_padded_sequence
+from tqdm import tqdm
 
-from model import *
-from utils.general_tools import *
-from utils.save_tools import *
-from data_load import *
+from data_load import train_load, val_load
+from model import Decoder, Encoder
 from process import Vocabulary
+from utils.general_tools import (adjust_lr, coco_metrics, get_train_transform,
+                                 get_val_trainsform, set_seed)
+from utils.save_tools import (save_best_model, save_epoch_model,
+                              save_generated_captions, save_loss, save_metrics)
 
-def set_seed(seed):
-	'''
-	Fix immediate seed to repeat experiment
-	:param seed: An integer
-	:return:
-	'''
-	torch.manual_seed(seed)
-	torch.cuda.manual_seed_all(seed)
-	np.random.seed(seed)
-	random.seed(seed)
-	torch.backends.cudnn.deterministic = True
 
 set_seed(21)
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 torch.multiprocessing.set_sharing_strategy('file_system')
 

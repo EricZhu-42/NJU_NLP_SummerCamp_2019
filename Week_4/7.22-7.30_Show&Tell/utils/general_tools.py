@@ -1,13 +1,15 @@
-import torch
-import numpy as np
-import random
-import pandas as pd
-import torchvision.transforms as transforms
-import os
 import json
-from pycocotools.coco import COCO
-from pycocoevalcap.eval import COCOEvalCap
+import os
+import random
+
+import numpy as np
+import pandas as pd
+import torch
+import torchvision.transforms as transforms
 from PIL import Image
+
+from pycocoevalcap.eval import COCOEvalCap
+from pycocotools.coco import COCO
 
 
 def set_seed(seed):
@@ -23,18 +25,17 @@ def set_seed(seed):
 	torch.backends.cudnn.deterministic = True
 
 
-#
 def get_train_transform():
 	'''
 	Transform the format of train images
 	:return:
 	'''
 	train_transform = transforms.Compose([
-		transforms.Resize([300, 300], Image.ANTIALIAS),
-		transforms.RandomCrop(224),
-		transforms.RandomHorizontalFlip(),
+		transforms.Resize([300, 300], Image.ANTIALIAS), # 调整大小为300x300
+		transforms.RandomCrop(224), # 尺寸为224的随机裁剪
+		transforms.RandomHorizontalFlip(), # 随机水平翻转
 		transforms.ToTensor(),
-		transforms.Normalize((0.485, 0.456, 0.406),
+		transforms.Normalize((0.485, 0.456, 0.406), # 图像标准化
 							 (0.229, 0.224, 0.225))])
 	return train_transform
 
@@ -45,9 +46,9 @@ def get_val_trainsform():
 	:return:
 	'''
 	val_transform = transforms.Compose([
-		transforms.Resize([224, 224], Image.ANTIALIAS),
+		transforms.Resize([224, 224], Image.ANTIALIAS), # 调整大小为224x224
 		transforms.ToTensor(),
-		transforms.Normalize((0.485, 0.456, 0.406),
+		transforms.Normalize((0.485, 0.456, 0.406), # 图像标准化
 							 (0.229, 0.224, 0.225))])
 	return val_transform
 

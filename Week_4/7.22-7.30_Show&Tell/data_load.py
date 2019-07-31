@@ -1,15 +1,14 @@
-import torch
 import os
-import nltk
-
-import torch.utils.data as data
-
-from PIL import Image
-from pycocotools.coco import COCO
-
 import pickle
+
+import nltk
+import torch
+import torch.utils.data as data
 import torchvision.transforms as transforms
+from PIL import Image
+
 from process import Vocabulary
+from pycocotools.coco import COCO
 
 
 class CocoTrainset(data.Dataset):
@@ -28,7 +27,7 @@ class CocoTrainset(data.Dataset):
 		self.coco = COCO(json)
 		self.ids = list(self.coco.anns.keys())
 		self.vocab = vocab
-		self.transform = transform
+		self.transform = transform # 对图像进行的变换处理
 
 	def __getitem__(self, index):
 		'''
@@ -43,23 +42,23 @@ class CocoTrainset(data.Dataset):
 		img_id = coco.anns[ann_id]['image_id']
 		path = coco.loadImgs(img_id)[0]['file_name']
 
-		image = Image.open(os.path.join(self.root, path)).convert('RGB')
+		image = Image.open(os.path.join(self.root, path)).convert('RGB') # 读取图像
 		if self.transform is not None:
-			image = self.transform(image)
+			image = self.transform(image) # 应用变换
 
 		tokens = nltk.tokenize.word_tokenize(str(caption).lower())
-		caption = []
+		caption = [] # 构造caption句子（列表）
 		caption.append(vocab('<start>'))
 		caption.extend([vocab(token) for token in tokens])
 		caption.append(vocab('<end>'))
 		target = torch.Tensor(caption)
-		return image, target, img_id
+		return image, target, img_id # 返回图像，caption，id
 
 	def __len__(self):
 		return len(self.ids)
 
 
-def train_collate_fn(data):
+def train_collate_fn(data): # 训练集的样本获取函数
 	'''
 
 	:param data: -format:(image,caption,img_id)
@@ -69,15 +68,15 @@ def train_collate_fn(data):
 			 img_ids:list,id of image
 	'''
 	# Sort by captions' length
-	data.sort(key=lambda x: len(x[1]), reverse=True)
+	data.sort(key=lambda x: len(x[1]), reverse=True) # 按照caption的长度由小到大排序
 
 	images, captions, img_ids = zip(*data)
 
-	images = torch.stack(images, 0)
+	images = torch.stack(images, 0) # 将images堆叠
 
 	lengths = [len(cap) for cap in captions]
 
-	targets = torch.zeros(len(captions), max(lengths)).long()
+	targets = torch.zeros(len(captions), max(lengths)).long() # 将图片存放至Tensor中
 
 	for i, cap in enumerate(captions):
 		end = lengths[i]
@@ -94,7 +93,7 @@ def train_load(root, json, vocab, transform, batch_size, shuffle, num_workers):
 								  shuffle=shuffle,
 								  num_workers=num_workers,
 								  collate_fn=train_collate_fn,
-								  drop_last=True)
+								  drop_last=True) # 抛弃长于BatchSize的数据
 
 	return data_loader
 
@@ -118,7 +117,7 @@ class CocoValset(data.Dataset):
 		self.ids = list(self.coco.imgs.keys())
 		self.transform = transform
 
-	def __getitem__(self, index):
+	def __getitem__(self, index): # 测试集取BatchSize==1
 		'''
 		return a item
 		'''
@@ -147,33 +146,3 @@ def val_load(root, json, transform, batch_size, shuffle, num_workers):
 								  )
 
 	return data_loader
-
-
-
-
-# if __name__ == '__main__':
-#
-#     root = '/home/maz//data/coco/train2014'
-#     root = '/home/maz/Documents/data/coco/train2014'
-#     json = '/home/maz//data/coco/annotations/captions_train2014.json'
-#     json = '/home/maz/Documents/data/coco/annotations/captions_train2014.json'
-#     vocab_path = '/home/maz//data/coco/annotations/vocab.pkl'
-#     vocab_path = '/home/maz/Documents/data/coco/annotations/vocab.pkl'
-#     with open(vocab_path, 'rb') as f:
-#         vocab = pickle.load(f)
-#     transform = transforms.Compose([
-#         transforms.Resize([300, 300], Image.ANTIALIAS),
-#         transforms.RandomCrop(224),
-#         transforms.RandomHorizontalFlip(),
-#         transforms.ToTensor(),
-#         transforms.Normalize((0.485, 0.456, 0.406),
-#                              (0.229, 0.224, 0.225))])
-#     batch_size = 2
-#     shuffle = False
-#     num_workers = 1
-#
-#     dataset = data_load(root,json,vocab,transform,batch_size,shuffle,num_workers)
-#     for a,b,c,d in dataset:
-#         print(d)
-#
-#         break

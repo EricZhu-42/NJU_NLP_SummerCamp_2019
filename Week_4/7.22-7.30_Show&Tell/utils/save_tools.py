@@ -1,9 +1,10 @@
-import pandas as pd
-import os
 import json
+import os
+
+import pandas as pd
 import torch
 
-from utils.general_tools import *
+from utils.general_tools import coco_metrics
 
 
 def save_loss(epoch_loss, epoch, loss_path):
@@ -104,17 +105,3 @@ def save_epoch_model(encoder, decoder, optimizer, epoch, best_score, best_epoch,
 			'best_score': best_score,
 			'best_epoch': best_epoch,
 		}, epoch_model_path + 'fine_tuning_epoch_{}.tar'.format(epoch))
-
-
-# def sentence_show(img_id, sentence, epoch,sentences_show_path):
-#
-# 	if not os.path.exists(sentences_show_path):
-# 		os.mkdir(sentences_show_path)
-# 	if epoch == 1
-# 		img_df = pd.DataFrame(columns=['epoch',sentence])
-
-if __name__ == '__main__':
-	generate_captions = [{'image_id': 70, 'caption': 'a a a a a a '}, {'image_id': 68, 'caption': 'b b b b b b'}]
-	generated_captions_path = save_generated_captions(generate_captions, 1, './generated_captions')
-	results = coco_metrics(generated_captions_path, '/home/maz/Documents/data/coco/annotations/captions_val2014.json')
-	save_metrics(results, './metrics.csv')

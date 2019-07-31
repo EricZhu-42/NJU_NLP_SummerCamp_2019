@@ -1,10 +1,11 @@
-import nltk
-import pickle
 import argparse
-
+import pickle
 from collections import Counter
-from pycocotools.coco import COCO
+
+import nltk
 from tqdm import tqdm
+
+from pycocotools.coco import COCO
 
 
 class Vocabulary(object):
@@ -14,13 +15,13 @@ class Vocabulary(object):
 		self.idx2word = {}
 		self.idx = 0
 
-	def add_word(self, word):
+	def add_word(self, word): # 将词语添加进词库
 		if not word in self.word2idx:
 			self.word2idx[word] = self.idx
 			self.idx2word[self.idx] = word
 			self.idx += 1
 
-	def __call__(self, word):
+	def __call__(self, word): # 查找词语的索引
 
 		# If a word not in vocabulary,it will be replace by <unknown>
 		if not word in self.word2idx:
@@ -45,13 +46,13 @@ def build_vocab(json, threshold):
 	counter = Counter()
 	ids = coco.anns.keys()
 
-	for id in tqdm(ids):
+	for id in tqdm(ids): # 遍历id，使用tqdm创建进度条
 		caption = str(coco.anns[id]['caption'])
-		tokens = nltk.tokenize.word_tokenize(caption.lower())
-		counter.update(tokens)
+		tokens = nltk.tokenize.word_tokenize(caption.lower()) # 使用nltk分词
+		counter.update(tokens) # 把分割出的单词加入counter
 
 	# Fillter the frequency is less than threshold
-	words = [word for word, cnt in counter.items() if cnt >= threshold]
+	words = [word for word, cnt in counter.items() if cnt >= threshold] # 对于出现次数大于threshold的单词，加入单词表中
 
 	# Build vocabulary
 	vocab = Vocabulary()
@@ -70,7 +71,7 @@ def main(args):
 	vocab_path = args.vocab_path
 
 	# save the vocabulary in pkl format
-	with open(vocab_path, 'wb') as f:
+	with open(vocab_path, 'wb') as f: # 保存词汇表至本地
 		pickle.dump(vocab, f)
 
 	print("*** Vocabulary size：{} ***".format(len(vocab)))
