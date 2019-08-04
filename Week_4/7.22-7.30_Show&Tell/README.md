@@ -1,60 +1,88 @@
-### 第四周
+# Show and Tell : Image Caption based on NIC
 
----
+>  时间：2019-07-22   
+>  本项目是对 [*Show and Tell: A Neural Image Caption Generator*](https://arxiv.org/abs/1411.4555) 论文的复现  
+>  以下代码参考了 [此代码库](https://github.com/maz0318/nlpSummerCamp2019/tree/master/week4) 与 [此代码库](https://github.com/amundv/kth-sml-project)
 
-coco数据集已经放在服务器上，在/home/user_data55/maz/cocodata/里
+## 文件结构
 
-#### process.py
+| 名称           | 描述                           |
+| -------------- | ------------------------------ |
+| temp\          | 自己实现的部分功能脚本         |
+| log\           | 训练日志与模型的保存文件夹     |
+| utils\         | 部分辅助脚本的保存文件夹       |
+| pic\           | 文档所需的部分图片的保存文件夹 |
+| process.py     | COCO数据集的预处理脚本         |
+| data_loader.py | COCO数据集的Dataset定义脚本    |
+| model.py       | 模型的定义脚本                 |
+| train_nic.py   | 模型的训练脚本                 |
 
-对coco数据集进行预处理
+## 数据集
 
-coco提供了一个共我们可用的api    --pycocotools
+本项目采用的数据集为 [Common Objects in Context](http://cocodataset.org/), 具体信息如下：
 
-可使用pip安装 ``` pip install pycocotools ```
+- Training: 2014 Contest Train images [83K images/13GB]  
+- Validation: 2014 Contest Val images [41K images/6GB]  
+- Test: 2014 Contest Test images [41K images/6GB]  
 
-处理的时候要用设计3个特殊字符
+## 运行环境
 
-* \<start>表示一个句子的开始
-* \<end>表示一个句子的结束
-* \<unknown>表示训练集中未见过的字符
+> 使用的运行环境如下：  
+>
+> torch == 1.0.1
+> torchvision == 0.2.2
+> pycocotools == 2.0.0
+> pycocoevalcap == 0.0
+>
+> 训练机配置如下：  
+>
+> GPU : GTX 1080
+> CUDA == 8.0.44
 
-然后形成一个词汇表，保存下来
+## 模型结构
 
-#### data_load.py
+NIC结构由两个模型构成：Encoder与Decoder. 
 
-写一个（或两个）coco数据集的pytorch的dataset格式
+- Encoder：卷积神经网络，采用经过在 `ImageNet` 上预训练的 `ResNet152` 模型 (`torchvision.models.resnet152`) 并进行微调（*fine tuning*），目的是提取图片特征，创建对图片特征进行语义描述的定长向量（Feature Vector）
 
-对于trani来说,要返回在一个mini-batch内按句子的长度排序的图片,句子，和句子的长度
+- Decoder：循环神经网络，采用LSTM/GRU作为结构单元，目的是在 Feature Vector 的基础上生成对图片的自然语言描述文本（Caption）
 
-对于val来说，为了方便，我们batch size取1，返回图片和图片的id
+  ![pic1](pic/pic1.png)
 
-#### model.py
+	> 以上图片来源于[此处](https://github.com/amundv/kth-sml-project)
 
-模型应该包括两个部分
+## 模型训练与结果
 
-* encoder我们采用预训练好的cnn（vgg16或resnet151)
-* decoder应该包含以下两个方法：
-  * forward，用来计算训练时每个时刻输出每个单词的概率。
-  * generator，测试时用来生成真正的句子。
+### Loss
 
-#### train_nic.py
+![](pic\1.png)
 
-训练的主程序之前在两个小实验中已经写过了，代码我也已经上传，大家可以参考。
+在训练过程中，模型的Loss基本呈稳定下降趋势。
 
+### BlEU指标
 
+![](pic\2.png)
 
-#### utils
+在训练过程中，模型的各级BLEU分数均呈现上涨趋势，并在10个Epoch左右出现收敛的倾向。
 
-utils文件夹包含了一些要用的工具函数，我已经写好放了进去
+### 多指标评价
 
+以下给出训练过程中奇数次Epoch的训练评估结果作为参考
 
+| Epoch | Bleu_1 | Bleu_4 | METEOR | ROUGE_L | CIDEr | SPICE |
+| :----: | :----: | :----: | :----: | :-----: | :---: | :---: |
+| 1     | 0.621  | 0.183 | 0.190 | 0.449 | 0.539 | 0.116 |
+| 3 | 0.647 | 0.216 | 0.209 | 0.472 | 0.668 | 0.138 |
+| 5 | 0.661 | 0.229 | 0.214 | 0.481 | 0.713 | 0.146 |
+| 7 | 0.662 | 0.230 | 0.218 | 0.483 | 0.725 | 0.146 |
+| 9 | 0.669 | 0.237 | 0.222 | 0.489 | 0.747 | 0.151 |
+| 11 | 0.663 | 0.238 | 0.224 | 0.489 | 0.757 | 0.153 |
+| 13 | 0.669 | 0.242 | 0.225 | 0.491 | 0.762 | 0.153 |
+| 15 | 0.663 | 0.235 | 0.224 | 0.489 | 0.754 | 0.153 |
+| 17 | 0.664 | 0.241 | 0.226 | 0.491 | 0.765 | 0.155 |
 
-#### Note：
+## 存在问题：
 
-不用服务器的同学，coco的评价指标需要自行安装，教程在https://github.com/flauted/coco-caption
+原论文中，在词语的生成选择阶段采用了Beam-size为20的Beam search。这提升了模型的BLEU指标约0.03。然而，对于自己实现的Beam search（在 `model.py\test_generate` 中实现），其计算速度远低于简单的贪婪算法。
 
-用服务器的同学暂时还不能用测试的函数，我安装完会及时通知
-
-update:
-
-测试的函数已经可以使用，如果还是不能使用的话，请大家用189.240这台服务器。
+根据分析可知，对每一组输入数据，贪婪算法仅需通过LSTM层，计算最多**20次**词语的概率分布（O(N)）。但对于Beam-size为20的Beam search，序列长度每增加1，都需要对当前所存储的所有状态计算一次概率分布（O(N^2)）。此外，还有大量的保存/恢复state，对概率序列进行排序（通过heapq实现）等操作。根据检验，使用个人实现的Beam search使评估的时间增加了约10倍。因此没有对其表现进行实际的评价。
