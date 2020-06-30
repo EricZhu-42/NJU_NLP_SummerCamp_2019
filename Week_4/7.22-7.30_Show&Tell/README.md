@@ -8,10 +8,10 @@
 
 | 名称           | 描述                           |
 | -------------- | ------------------------------ |
-| temp\          | 自己实现的部分功能脚本         |
-| log\           | 训练日志与模型的保存文件夹     |
-| utils\         | 部分辅助脚本的保存文件夹       |
-| pic\           | 文档所需的部分图片的保存文件夹 |
+| temp/          | 自己实现的部分功能脚本         |
+| log/           | 训练日志与模型的保存文件夹     |
+| utils/         | 部分辅助脚本的保存文件夹       |
+| pic/           | 文档所需的部分图片的保存文件夹 |
 | process.py     | COCO数据集的预处理脚本         |
 | data_loader.py | COCO数据集的Dataset定义脚本    |
 | model.py       | 模型的定义脚本                 |
@@ -29,14 +29,14 @@
 
 > 使用的运行环境如下：  
 >
-> torch == 1.0.1
-> torchvision == 0.2.2
-> pycocotools == 2.0.0
-> pycocoevalcap == 0.0
+> torch == 1.0.1  
+> torchvision == 0.2.2  
+> pycocotools == 2.0.0  
+> pycocoevalcap == 0.0  
 >
 > 训练机配置如下：  
 >
-> GPU : GTX 1080
+> GPU : GTX 1080  
 > CUDA == 8.0.44
 
 ## 模型结构
@@ -49,19 +49,19 @@ NIC结构由两个模型构成：Encoder与Decoder.
 
   ![pic1](pic/pic1.png)
 
-	> 以上图片来源于[此处](https://github.com/amundv/kth-sml-project)
+> 上图的[图片来源](https://github.com/amundv/kth-sml-project)
 
 ## 模型训练与结果
 
 ### Loss
 
-![](pic\1.png)
+![](./pic/1.png)
 
 在训练过程中，模型的Loss基本呈稳定下降趋势。
 
 ### BlEU指标
 
-![](pic\2.png)
+![](./pic/2.png)
 
 在训练过程中，模型的各级BLEU分数均呈现上涨趋势，并在10个Epoch左右出现收敛的倾向。
 
