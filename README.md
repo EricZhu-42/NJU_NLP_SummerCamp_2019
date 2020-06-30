@@ -23,5 +23,5 @@ Materials of NJU NLP SummerCamp 2019
   - Reading: [Knowing When to Look: Adaptive Attention via A Visual Sentinel for Image Captioning](https://arxiv.org/abs/1612.01887)
   - Reading: Source code of [Adaptive Attention](https://github.com/jiasenlu/AdaptiveAttention)
 - Week 7:
-  - Reproducing: [Knowing When to Look: Adaptive Attention via A Visual Sentinel for Image Captioning](https://arxiv.org/abs/1612.01887)
-  
+  - Reproducing: [Knowing When to Look: Adaptive Attention via A Visual Sentinel for Image Captioning](https://arxiv.org/abs/1612.01887) (Code not included)
+  - Final report of summer camp
